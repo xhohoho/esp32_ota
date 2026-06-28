@@ -1,0 +1,7 @@
+# Per-sketch secrets — never commit real credentials
+**/secrets.h
+
+# Arduino / build junk
+*.bin
+build/
+.vscode/
