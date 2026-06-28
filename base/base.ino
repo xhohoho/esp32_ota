@@ -3,6 +3,7 @@
 #include <PubSubClient.h>
 #include <HTTPUpdate.h>
 #include "secrets.h"  // WIFI_SSID, WIFI_PWD, MQTT_SERVER, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD
+#include "led.h"
 
 const char *mqtt_username = MQTT_USERNAME;
 const char *mqtt_password = MQTT_PASSWORD;
@@ -22,7 +23,6 @@ void performOTA(const char *url) {
   Serial.println(url);
 
   otaClient.setInsecure();
-  httpUpdate.setLedPin(LED_BUILTIN, LOW);
   httpUpdate.rebootOnUpdate(true);
 
   t_httpUpdate_return ret = httpUpdate.update(otaClient, url);
@@ -31,6 +31,7 @@ void performOTA(const char *url) {
     case HTTP_UPDATE_FAILED:
       Serial.printf("OTA Failed (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
       publishStatus("ota failed");
+      ledOtaFail();
       break;
     case HTTP_UPDATE_NO_UPDATES:
       publishStatus("ota no update");
@@ -71,20 +72,26 @@ void CallbackMqtt(char *topic, byte *payload, unsigned int length) {
 void ConnectToMqtt() {
   Serial.println("Connecting to MQTT...");
   while (!mqttClient.connected()) {
-    if (mqttClient.connect(DEVICE_ID, mqtt_username, mqtt_password)) {
+    char lwtPayload[50];
+    snprintf(lwtPayload, sizeof(lwtPayload), "%s offline", DEVICE_ID);
+    if (mqttClient.connect(DEVICE_ID, mqtt_username, mqtt_password, "devices/status", 1, true, lwtPayload)) {
       Serial.println("MQTT connected.");
       mqttClient.subscribe("devices/ota");
 
-      char payload[50];
-      snprintf(payload, sizeof(payload), "%s online", DEVICE_ID);
-      mqttClient.publish("devices/connected", payload, true);
+      char statusPayload[50];
+      snprintf(statusPayload, sizeof(statusPayload), "%s online", DEVICE_ID);
+      mqttClient.publish("devices/status", statusPayload, true);
 
-      publishStatus("waiting for OTA");
+      char sensorPayload[50];
+      snprintf(sensorPayload, sizeof(sensorPayload), "%s none", DEVICE_ID);
+      mqttClient.publish("devices/sensor", sensorPayload, true);
+
+      ledMqttOK();
     } else {
       Serial.print("Failed rc=");
       Serial.print(mqttClient.state());
       Serial.println(" retrying in 2s...");
-      delay(2000);
+      ledMqttConnecting();
     }
   }
 }
@@ -94,9 +101,10 @@ void ConnectToWiFi() {
   WiFi.begin(WIFI_SSID, WIFI_PWD, 6);
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
-    delay(500);
+    ledWifiConnecting();
   }
   Serial.println("\nWiFi connected.");
+  ledWifiOK();
 }
 
 void SetupNTP() {
@@ -105,7 +113,7 @@ void SetupNTP() {
   struct tm timeinfo;
   while (!getLocalTime(&timeinfo)) {
     Serial.print(".");
-    delay(500);
+    ledNtpSyncing();
   }
   Serial.println("\nNTP synced.");
 }
@@ -115,6 +123,7 @@ void SetupNTP() {
 // ═══════════════════════════════════════════════════════════
 void setup() {
   Serial.begin(115200);
+  ledSetup();
   ConnectToWiFi();
   SetupNTP();
   wifiClient.setInsecure();
