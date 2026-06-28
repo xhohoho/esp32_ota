@@ -2,7 +2,17 @@
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include <HTTPUpdate.h>
-#include "secrets.h"  // WIFI_SSID, WIFI_PWD, MQTT_SERVER, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD
+#include <time.h>
+#include "secrets.h"  // WIFI_SSID, WIFI_PWD, MQTT_SERVER, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD, DEVICE_ID
+
+// ═══════════════════════════════════════════════════════════
+// BUMP THIS before each test export/upload so you can visually
+// confirm the OTA actually replaced the firmware (check Serial
+// Monitor or devices/status after the update completes).
+// ═══════════════════════════════════════════════════════════
+const char *FIRMWARE_VERSION = "v1";
+
+const char *SENSOR_NAME = "test";
 
 const char *mqtt_username = MQTT_USERNAME;
 const char *mqtt_password = MQTT_PASSWORD;
@@ -42,11 +52,27 @@ void performOTA(const char *url) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// DUMMY SENSOR PUBLISH
+// ═══════════════════════════════════════════════════════════
+void publishSensor(const char *timestamp) {
+  // Random dummy value just to prove data is flowing end-to-end.
+  float value = random(0, 10000) / 100.0;   // 0.00 - 99.99
+
+  char payload[180];
+  snprintf(payload, sizeof(payload),
+    "{\"device\":\"%s\",\"sensor\":\"%s\",\"firmware\":\"%s\",\"timestamp\":\"%s\","
+    "\"value\":%.2f}",
+    DEVICE_ID, SENSOR_NAME, FIRMWARE_VERSION, timestamp, value);
+  mqttClient.publish("devices/data", payload);
+  Serial.println(payload);
+}
+
+// ═══════════════════════════════════════════════════════════
 // MQTT
 // ═══════════════════════════════════════════════════════════
 void publishStatus(const char *status) {
-  char payload[150];
-  snprintf(payload, sizeof(payload), "%s %s", DEVICE_ID, status);
+  char payload[180];
+  snprintf(payload, sizeof(payload), "%s %s (fw %s)", DEVICE_ID, status, FIRMWARE_VERSION);
   mqttClient.publish("devices/status", payload, true);
   Serial.print("Status: ");
   Serial.println(payload);
@@ -79,7 +105,9 @@ void ConnectToMqtt() {
       snprintf(payload, sizeof(payload), "%s online", DEVICE_ID);
       mqttClient.publish("devices/connected", payload, true);
 
-      publishStatus("waiting for OTA");
+      char status[50];
+      snprintf(status, sizeof(status), "running %s", SENSOR_NAME);
+      publishStatus(status);
     } else {
       Serial.print("Failed rc=");
       Serial.print(mqttClient.state());
@@ -115,8 +143,13 @@ void SetupNTP() {
 // ═══════════════════════════════════════════════════════════
 void setup() {
   Serial.begin(115200);
+  Serial.print("Firmware version: ");
+  Serial.println(FIRMWARE_VERSION);
+
   ConnectToWiFi();
   SetupNTP();
+  randomSeed(esp_random());
+
   wifiClient.setInsecure();
   mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
   mqttClient.setCallback(CallbackMqtt);
@@ -126,4 +159,16 @@ void loop() {
   if (WiFi.status() != WL_CONNECTED) ConnectToWiFi();
   if (!mqttClient.connected()) ConnectToMqtt();
   mqttClient.loop();
+
+  static uint64_t last_time = 0;
+  uint64_t now = millis();
+
+  if (now - last_time > 2000) {
+    last_time = now;
+    struct tm timeinfo;
+    getLocalTime(&timeinfo);
+    char timestamp[30];
+    strftime(timestamp, sizeof(timestamp), "%Y/%m/%d %H:%M:%S", &timeinfo);
+    publishSensor(timestamp);
+  }
 }

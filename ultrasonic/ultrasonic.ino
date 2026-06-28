@@ -100,9 +100,7 @@ void CallbackMqtt(char *topic, byte *payload, unsigned int length) {
 void ConnectToMqtt() {
   Serial.println("Connecting to MQTT...");
   while (!mqttClient.connected()) {
-    char clientId[50];
-    sprintf(clientId, "ESP32Client-%04X", random(0xffff));
-    if (mqttClient.connect(clientId, mqtt_username, mqtt_password)) {
+    if (mqttClient.connect(DEVICE_ID, mqtt_username, mqtt_password)) {
       Serial.println("MQTT connected.");
       mqttClient.subscribe("devices/ota");
 
