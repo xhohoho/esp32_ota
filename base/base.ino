@@ -5,7 +5,7 @@
 
 #define SENSOR_NAME "none"
 
-#include "../base.h"
+#include "base.h"
 
 void setup() {
   Serial.begin(115200);

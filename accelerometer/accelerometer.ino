@@ -4,7 +4,7 @@
 
 #define SENSOR_NAME "accelerometer"
 
-#include "../base.h"
+#include "base.h"
 #include <Wire.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>

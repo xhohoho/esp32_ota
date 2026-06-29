@@ -4,7 +4,7 @@
 
 #define SENSOR_NAME "temperature"
 
-#include "../base.h"
+#include "base.h"
 #include <DHTesp.h>
 
 const byte DHT_PIN = 15;

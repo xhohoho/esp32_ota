@@ -8,7 +8,7 @@
 
 #define SENSOR_NAME "test"
 
-#include "../base.h"
+#include "base.h"
 
 const char *FIRMWARE_VERSION = "v1";
 

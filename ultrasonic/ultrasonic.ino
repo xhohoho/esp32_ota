@@ -4,7 +4,7 @@
 
 #define SENSOR_NAME "ultrasonic"
 
-#include "../base.h"
+#include "base.h"
 
 const byte TRIG_PIN = 5;
 const byte ECHO_PIN = 18;

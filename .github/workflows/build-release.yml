@@ -51,7 +51,7 @@ jobs:
           arduino-cli compile \
             --fqbn esp32:esp32:esp32doit-devkit-v1 \
             --output-dir build \
-            ${{ matrix.sketch.dir }}/${{ matrix.sketch.ino }}.ino
+            ${{ matrix.sketch.dir }}
 
       - name: Rename .bin with sketch name + tag
         run: |
