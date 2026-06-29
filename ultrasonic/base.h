@@ -270,7 +270,7 @@ void ConnectToWiFi(bool forcePortal) {
   wm.setConnectTimeout(20);
   wm.setConfigPortalTimeout(180);
 
-  String apName = String("ESP32-Setup-") + deviceIdBuf;
+  String apName = String(deviceIdBuf);
   bool noMqttYet = (strlen(mqttServerBuf) == 0);
   bool openPortal = forcePortal || noMqttYet;
 
