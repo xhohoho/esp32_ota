@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <HTTPClient.h>
 #include <PubSubClient.h>
 #include <HTTPUpdate.h>
 #include <DHTesp.h>
@@ -32,11 +33,28 @@ void performOTA(const char *url) {
   Serial.print("OTA URL: ");
   Serial.println(url);
 
+  // Follow GitHub redirect to CDN
+  String finalUrl = url;
+  WiFiClientSecure redirectClient;
+  redirectClient.setInsecure();
+  HTTPClient http;
+  http.begin(redirectClient, finalUrl);
+  http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+  int httpCode = http.GET();
+  if (httpCode == HTTP_CODE_OK || httpCode == 302 || httpCode == 301) {
+    finalUrl = http.getLocation();
+    if (finalUrl.isEmpty()) finalUrl = url;
+  }
+  http.end();
+
+  Serial.print("Final OTA URL: ");
+  Serial.println(finalUrl);
+
   otaClient.setInsecure();
   httpUpdate.rebootOnUpdate(true);
 
   ledOtaDownloading();
-  t_httpUpdate_return ret = httpUpdate.update(otaClient, url);
+  t_httpUpdate_return ret = httpUpdate.update(otaClient, finalUrl);
 
   switch (ret) {
     case HTTP_UPDATE_FAILED:
@@ -82,15 +100,15 @@ void publishStatus(const char *status) {
 }
 
 void CallbackMqtt(char *topic, byte *payload, unsigned int length) {
-  char message[200];
+  char message[512];
   unsigned int len = (length < sizeof(message) - 1) ? length : sizeof(message) - 1;
   for (unsigned int i = 0; i < len; i++) message[i] = (char)payload[i];
   message[len] = '\0';
 
   if (strcmp(topic, "devices/ota") == 0) {
     char msgDeviceId[50];
-    char msgUrl[150];
-    int matched = sscanf(message, "%s %s", msgDeviceId, msgUrl);
+    char msgUrl[512];
+    int matched = sscanf(message, "%49s %511s", msgDeviceId, msgUrl);
     if (matched == 2 && strcmp(msgDeviceId, DEVICE_ID) == 0) {
       performOTA(msgUrl);
     }
@@ -156,6 +174,7 @@ void setup() {
   SetupNTP();
   dhtSensor.setup(DHT_PIN, DHTesp::DHT22);
   wifiClient.setInsecure();
+  mqttClient.setBufferSize(512);
   mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
   mqttClient.setCallback(CallbackMqtt);
 }
