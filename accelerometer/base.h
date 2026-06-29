@@ -1,6 +1,6 @@
 // base.h — shared WiFi/MQTT/OTA/NVS foundation for all ESP32 OTA sketches
 //
-// USAGE: #include "../base.h" at the top of each sensor sketch.
+// USAGE: #include "base.h" at the top of each sensor sketch.
 // Each sketch only needs to implement publishSensor(const char *timestamp).
 //
 // FIXES vs old per-sketch approach:
