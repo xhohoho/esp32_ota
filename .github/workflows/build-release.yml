@@ -55,14 +55,14 @@ jobs:
             --output-dir build \
             ${{ matrix.sketch.dir }}
 
-      - name: Rename .bin with sketch name + tag
+      - name: Rename .bin with sketch name only
         run: |
           mv build/${{ matrix.sketch.ino }}.ino.bin \
-             build/${{ matrix.sketch.ino }}-${{ github.ref_name }}.bin
+             build/${{ matrix.sketch.ino }}.bin
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/${{ matrix.sketch.ino }}-${{ github.ref_name }}.bin
+          files: build/${{ matrix.sketch.ino }}.bin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
