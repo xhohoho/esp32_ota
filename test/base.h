@@ -184,10 +184,22 @@ void ConnectToWiFi(bool forcePortal);
 
 void ConnectToMqtt() {
   Serial.println("Connecting to MQTT...");
+  Serial.println("(Hold BOOT button now to reopen setup portal)");
   int failCount   = 0;
   int backoffMs   = 2000;  // starts at 2s, doubles each attempt, caps at 60s
 
   while (!mqttClient.connected()) {
+    // Allow provisioning reset even while stuck in MQTT loop
+    if (digitalRead(RESET_BUTTON_PIN) == LOW) {
+      Serial.println("BOOT held during MQTT — reopening setup portal...");
+      delay(50);  // debounce
+      ConnectToWiFi(true);
+      mqttClient.setServer(mqttServerBuf, mqttPort);
+      failCount = 0;
+      backoffMs = 2000;
+      continue;
+    }
+
     char lwtPayload[50];
     snprintf(lwtPayload, sizeof(lwtPayload), "%s offline", deviceIdBuf);
 
@@ -212,7 +224,12 @@ void ConnectToMqtt() {
       Serial.printf("MQTT failed rc=%d, retry in %dms...\n",
         mqttClient.state(), backoffMs);
       ledMqttConnecting();
-      delay(backoffMs);
+      // Poll BOOT button during the backoff delay instead of blocking
+      unsigned long start = millis();
+      while (millis() - start < (unsigned long)backoffMs) {
+        if (digitalRead(RESET_BUTTON_PIN) == LOW) break;
+        delay(50);
+      }
       backoffMs = min(backoffMs * 2, 60000);  // exponential backoff, cap 60s
 
       failCount++;
