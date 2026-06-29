@@ -202,7 +202,7 @@ void ConnectToMqtt() {
 
     char lwtPayload[50];
     snprintf(lwtPayload, sizeof(lwtPayload), "%s offline", deviceIdBuf);
-
+    
     if (mqttClient.connect(deviceIdBuf, mqttUserBuf, mqttPassBuf,
                            "devices/status", 1, true, lwtPayload)) {
       Serial.println("MQTT connected.");
@@ -284,6 +284,7 @@ void ConnectToWiFi(bool forcePortal) {
   }
 
   wm.setSaveConfigCallback(saveConfigCallback);
+  wm.setSaveParamsCallback(saveConfigCallback);  // fire even during autoConnect
   wm.setConnectTimeout(20);
   wm.setConfigPortalTimeout(180);
 
