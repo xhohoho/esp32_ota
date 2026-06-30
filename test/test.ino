@@ -20,7 +20,9 @@ void publishSensor(const char *timestamp) {
     "{\"device\":\"%s\",\"sensor\":\"%s\",\"firmware\":\"%s\","
     "\"timestamp\":\"%s\",\"value\":%.2f}",
     deviceIdBuf, SENSOR_NAME, FIRMWARE_VERSION, timestamp, value);
-  if (mqttClient.publish("devices/data", payload)) {
+  char topic[64];
+  snprintf(topic, sizeof(topic), "devices/%s/data", deviceIdBuf);
+  if (mqttClient.publish(topic, payload)) {
     ledDataSent();
   } else {
     ledPublishFail();
@@ -33,11 +35,12 @@ void publishSensor(const char *timestamp) {
 // NOTE: call this only after MQTT is connected (base.h's version guards too).
 void publishStatusWithFw(const char *status) {
   if (!mqttClient.connected()) return;
-  char payload[180];
-  snprintf(payload, sizeof(payload), "%s %s (fw %s)",
-    deviceIdBuf, status, FIRMWARE_VERSION);
-  mqttClient.publish("devices/status", payload, true);
-  Serial.print("Status: "); Serial.println(payload);
+  char topic[64];
+  snprintf(topic, sizeof(topic), "devices/%s/status", deviceIdBuf);
+  char payload[150];
+  snprintf(payload, sizeof(payload), "%s (fw %s)", status, FIRMWARE_VERSION);
+  mqttClient.publish(topic, payload, true);   // retain
+  Serial.print("Status ["); Serial.print(topic); Serial.print("]: "); Serial.println(payload);
 }
 
 void setup() {

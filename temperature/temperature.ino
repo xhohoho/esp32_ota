@@ -18,7 +18,9 @@ void publishSensor(const char *timestamp) {
     "\"temperature\":%.2f,\"humidity\":%.2f}",
     deviceIdBuf, SENSOR_NAME, timestamp,
     data.temperature, data.humidity);
-  if (mqttClient.publish("devices/data", payload)) {
+  char topic[64];
+  snprintf(topic, sizeof(topic), "devices/%s/data", deviceIdBuf);
+  if (mqttClient.publish(topic, payload)) {
     ledDataSent();
   } else {
     ledPublishFail();

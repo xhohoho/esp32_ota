@@ -158,10 +158,12 @@ void performOTA(const char *url) {
 
 void publishStatus(const char *status) {
   if (!mqttClient.connected()) return;  // guard: don't publish while disconnected
-  char payload[150];
-  snprintf(payload, sizeof(payload), "%s %s", deviceIdBuf, status);
-  mqttClient.publish("devices/status", payload, true);
-  Serial.print("Status: "); Serial.println(payload);
+  char topic[64];
+  snprintf(topic, sizeof(topic), "devices/%s/status", deviceIdBuf);
+  char payload[100];
+  snprintf(payload, sizeof(payload), "%s", status);
+  mqttClient.publish(topic, payload, true);   // retain — useful for debugging & LWT
+  Serial.print("Status ["); Serial.print(topic); Serial.print("]: "); Serial.println(payload);
 }
 
 void CallbackMqtt(char *topic, byte *payload, unsigned int length) {
@@ -200,22 +202,25 @@ void ConnectToMqtt() {
       continue;
     }
 
-    char lwtPayload[50];
-    snprintf(lwtPayload, sizeof(lwtPayload), "%s offline", deviceIdBuf);
+    char lwtTopic[64];
+    snprintf(lwtTopic, sizeof(lwtTopic), "devices/%s/status", deviceIdBuf);
     
     if (mqttClient.connect(deviceIdBuf, mqttUserBuf, mqttPassBuf,
-                           "devices/status", 1, true, lwtPayload)) {
+                           lwtTopic, 1, true, "offline")) {
       Serial.println("MQTT connected.");
       mqttClient.subscribe("devices/ota");
 
-      // Announce online + sensor type
-      char buf[50];
-      snprintf(buf, sizeof(buf), "%s online", deviceIdBuf);
-      mqttClient.publish("devices/status", buf, true);
+      // Announce online
+      char statusTopic[64];
+      snprintf(statusTopic, sizeof(statusTopic), "devices/%s/status", deviceIdBuf);
+      mqttClient.publish(statusTopic, "online", true);   // retain
 
-      // SENSOR_NAME must be defined in the including sketch
-      snprintf(buf, sizeof(buf), "%s %s", deviceIdBuf, SENSOR_NAME);
-      mqttClient.publish("devices/sensor", buf, true);
+      // Announce sensor type
+      char sensorTopic[64];
+      snprintf(sensorTopic, sizeof(sensorTopic), "devices/%s/sensor", deviceIdBuf);
+      char sensorPayload[50];
+      snprintf(sensorPayload, sizeof(sensorPayload), "%s", SENSOR_NAME);
+      mqttClient.publish(sensorTopic, sensorPayload, true);   // retain — see which device uses which sensor
 
       ledMqttOK();
       failCount  = 0;

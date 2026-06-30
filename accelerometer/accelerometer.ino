@@ -29,7 +29,9 @@ void publishSensor(const char *timestamp) {
     accel.acceleration.x, accel.acceleration.y, accel.acceleration.z,
     gyro.gyro.x, gyro.gyro.y, gyro.gyro.z,
     temp.temperature);
-  if (mqttClient.publish("devices/data", payload)) {
+  char topic[64];
+  snprintf(topic, sizeof(topic), "devices/%s/data", deviceIdBuf);
+  if (mqttClient.publish(topic, payload)) {
     ledDataSent();
   } else {
     ledPublishFail();
